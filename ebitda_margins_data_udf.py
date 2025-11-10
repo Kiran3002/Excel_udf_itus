@@ -66,16 +66,34 @@ except Exception:
 # -------------------------------------------------------------------
 # CONNECTION & UTILITIES
 # -------------------------------------------------------------------
+_index_checked = False  # Global flag to ensure we only check once
+
 def _get_connection():
-    """Return database connection based on config."""
+    """Return database connection based on config and ensure index exists."""
+    global _index_checked
+
     if DB_TYPE == 'sqlite':
         if not os.path.exists(DB_PATH):
             raise FileNotFoundError(f"SQLite DB not found at path: {DB_PATH}")
-        return sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH)
+        if not _index_checked:
+            try:
+                conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_equity_index_constituents_lookup
+                ON equity_index_constituents (index_name, accord_code, date);
+                """)
+                conn.commit()
+                _index_checked = True
+                if logger:
+                    logger.info("✅ Verified: index idx_index_components_lookup exists.")
+            except Exception as e:
+                if logger:
+                    logger.warning(f"⚠️ Index check skipped due to: {e}")
+        return conn
     else:
         import psycopg2
         return psycopg2.connect(**RDS_CONFIG)
-
+    
 # -------------------------------------------------------------------
 # CACHING
 # -------------------------------------------------------------------
@@ -90,9 +108,19 @@ def _cached_query(sql: str, params_key: Tuple[str]):
         conn.close()
 
 def _run_query_df(sql: str, params: Tuple = ()):
-    """Execute SQL with caching."""
+    """Execute SQL with caching and performance logging."""
     params_key = tuple(str(p) for p in params)
-    return _cached_query(sql, params_key)
+    start = time.perf_counter()
+
+    df = _cached_query(sql, params_key)
+
+    duration = round((time.perf_counter() - start) * 1000, 3)  # in ms
+    if logger:
+        logger.info(f"⏱️ Query time: {duration} ms | SQL Params={params_key}")
+        if duration > 50:  # > 0.05 seconds threshold
+            logger.warning(f"⚠️ Slow query detected ({duration} ms): {params_key}")
+    return df
+
 
 # -------------------------------------------------------------------
 # INPUT VALIDATION
@@ -133,7 +161,7 @@ def _validate_inputs_with_types(expected_types: dict, **kwargs):
 def log_call(func):
     """Decorator for logging execution time and success/failure — Excel-safe."""
     @functools.wraps(func)
-    def inner_wrapper(*args):  # ⚠️ no kwargs here, Excel safe
+    def inner_wrapper(*args):  
         start = time.perf_counter()
         status = "SUCCESS"
         error_msg = None
