@@ -5,10 +5,11 @@ Excel UDFs (xlwings) to fetch index constituents from a local SQLite database.
 
 Configuration is read from config.ini, allowing easy migration from SQLite to RDS.
 
-Usage:
-- Create a config.ini file in the same directory (see example below)
-- Import functions via xlwings → Import Functions
-- From Excel: =get_monthly_data("nifty_500","2024-03-31")
+Usage (Excel formulas):
+    =get_monthly_data("nifty_500","2024-03-31")
+    =get_series("nifty_500","2024-03-31","2025-09-30")
+    =get_matrix("2024-03-31","nifty_500")
+    =get_all_data("nifty_500")
 """
 
 import xlwings as xw
@@ -17,13 +18,21 @@ import pandas as pd
 import configparser
 import os
 from datetime import datetime
-from typing import List, Tuple
+from typing import Tuple
 from functools import lru_cache
-
-# ---------------- CONFIG -----------------
+import win32com.client
+import logging
+from logging.handlers import RotatingFileHandler
+import time
+import inspect
+import functools
+import time
+# -------------------------------------------------------------------
+# CONFIGURATION
+# -------------------------------------------------------------------
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'config.ini')
+LOG_FILE = os.path.join(os.path.dirname(__file__), 'query_log.txt')
 
-# Disable interpolation so '%' in date format works normally
 config = configparser.ConfigParser(interpolation=None)
 config.read(CONFIG_FILE)
 
@@ -39,196 +48,245 @@ RDS_CONFIG = {
     'user': config.get('DATABASE', 'user', fallback=''),
     'password': config.get('DATABASE', 'password', fallback='')
 }
-# -----------------------------------------
 
+# -------------------------------------------------------------------
+# LOGGING SETUP
+# -------------------------------------------------------------------
+try:
+    logger = logging.getLogger("QueryLogger")
+    logger.setLevel(logging.INFO)
+    handler = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding='utf-8')
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+except Exception:
+    # If logging setup fails, don’t break Excel UDFs
+    logger = None
 
+# -------------------------------------------------------------------
+# CONNECTION & UTILITIES
+# -------------------------------------------------------------------
 def _get_connection():
-    """Return DB connection based on db_type."""
+    """Return database connection based on config."""
     if DB_TYPE == 'sqlite':
+        if not os.path.exists(DB_PATH):
+            raise FileNotFoundError(f"SQLite DB not found at path: {DB_PATH}")
         return sqlite3.connect(DB_PATH)
     else:
         import psycopg2
         return psycopg2.connect(**RDS_CONFIG)
 
-
-def _run_query_df(sql: str, params: Tuple = ()):
-    """Execute SQL query and return a DataFrame."""
+# -------------------------------------------------------------------
+# CACHING
+# -------------------------------------------------------------------
+@lru_cache(maxsize=64)
+def _cached_query(sql: str, params_key: Tuple[str]):
+    """Run and cache SQL queries (LRU cache for speed)."""
     conn = _get_connection()
     try:
-        df = pd.read_sql_query(sql, conn, params=params)
+        df = pd.read_sql_query(sql, conn, params=params_key)
         return df
     finally:
         conn.close()
 
+def _run_query_df(sql: str, params: Tuple = ()):
+    """Execute SQL with caching."""
+    params_key = tuple(str(p) for p in params)
+    return _cached_query(sql, params_key)
 
+# -------------------------------------------------------------------
+# INPUT VALIDATION
+# -------------------------------------------------------------------
 def _format_date(date_value: str) -> str:
-    """
-    Convert Excel date input (e.g., 2024-03-31) to the configured DB format.
-    Handles inputs with or without time components.
-    """
+    """Normalize Excel input date to match DB format."""
     try:
-        date_value = str(date_value).strip().replace('"', '')  # Clean up stray spaces/quotes
-
-        # Try parsing just date (YYYY-MM-DD)
+        date_value = str(date_value).strip().replace('"', '')
         if len(date_value) == 10:
-            date_obj = datetime.strptime(date_value, "%Y-%m-%d")
-            formatted = date_obj.strftime(DATE_FORMAT)
-            return formatted
-
-        # If already full timestamp (e.g. 2024-03-31 00:00:00), return as-is
+            dt = datetime.strptime(date_value, "%Y-%m-%d")
+            return dt.strftime(DATE_FORMAT)
         datetime.strptime(date_value, DATE_FORMAT)
         return date_value
-
     except Exception:
-        # If format is unknown, just return raw value
         return date_value
 
-# ---------------- UDFs ------------------
+
+def _validate_inputs_with_types(expected_types: dict, **kwargs):
+    """
+    Validate that required inputs are provided and match expected types.
+    expected_types = {'param': str, 'param2': str}
+    """
+    for name, value in kwargs.items():
+        if value is None or str(value).strip() == "":
+            raise ValueError(f"Missing required input: {name}")
+        expected_type = expected_types.get(name)
+        if expected_type and not isinstance(value, expected_type):
+            raise TypeError(
+                f"Type Mismatch: Expected '{name}' as {expected_type.__name__}, "
+                f"but got {type(value).__name__}"
+            )
+
+# -------------------------------------------------------------------
+# LOG DECORATOR
+# -------------------------------------------------------------------
 
 
+def log_call(func):
+    """Decorator for logging execution time and success/failure — Excel-safe."""
+    @functools.wraps(func)
+    def inner_wrapper(*args):  # ⚠️ no kwargs here, Excel safe
+        start = time.perf_counter()
+        status = "SUCCESS"
+        error_msg = None
+        try:
+            result = func(*args)
+            return result
+        except Exception as e:
+            status = "FAILED"
+            error_msg = str(e)
+            raise
+        finally:
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            if logger:
+                params = ", ".join([repr(a) for a in args])
+                msg = (
+                    f"{'SUCCESS' if status == 'SUCCESS' else 'FAILURE'} "
+                    f"Function: {func.__name__} | Params: ({params}) | "
+                    f"Duration: {duration_ms} ms | Status: {status}"
+                )
+                if error_msg:
+                    msg += f" | Error: {error_msg}"
+                logger.info(msg)
+    return inner_wrapper
 
-@xw.func
+
+# -------------------------------------------------------------------
+# UDFS
+# -------------------------------------------------------------------
+@xw.func(category="Finance UDFs")
 @xw.ret(expand='table')
+@log_call
 def get_monthly_data(index_name: str, date_value: str):
+    """Fetch constituents for a given index as on a specific date."""
+    _validate_inputs_with_types({'index_name': str, 'date_value': str},
+                                index_name=index_name, date_value=date_value)
+
+    formatted_date = _format_date(date_value)
+    sql = f"""
+        SELECT company_name, sector, mcap_category, weights
+        FROM {TABLE_NAME}
+        WHERE index_name = ? AND (date = ? OR date LIKE ?)
+        ORDER BY weights DESC
     """
-    Excel formula:
-        =get_monthly_data("nifty_500", "2024-03-31")
+    df = _run_query_df(sql, (index_name, formatted_date, formatted_date.split(" ")[0] + "%"))
+    if df.empty:
+        return [[f"⚠️ No data found for index='{index_name}' on '{formatted_date}'"]]
+    return [df.columns.tolist()] + df.values.tolist()
 
-    Returns constituents (company_name, sector, mcap_category, weights)
-    for the given index as on the specified date.
-    """
-    try:
-        if not index_name or not date_value:
-            return [["Error: index_name and date are required"]]
 
-        formatted_date = _format_date(date_value)
-
-        # Flexible SQL: allows exact match OR date prefix match
-        sql = f"""
-            SELECT company_name, sector, mcap_category, weights
-            FROM {TABLE_NAME}
-            WHERE index_name = ?
-              AND (date = ? OR date LIKE ?)
-            ORDER BY weights DESC
-        """
-
-        df = _run_query_df(sql, (index_name, formatted_date, formatted_date.split(" ")[0] + "%"))
-
-        if df.empty:
-            return [[f"No data found for index='{index_name}' on '{formatted_date}'"]]
-
-        # Return headers + rows for Excel display
-        return [df.columns.tolist()] + df.values.tolist()
-
-    except Exception as e:
-        return [[f"Error: {e}"]]
-
-@xw.func
+@xw.func(category="Finance UDFs")
 @xw.ret(expand='table')
+@log_call
 def get_series(index_name: str, start_date: str, end_date: str):
+    """Fetch index constituents and weights between start and end dates."""
+    _validate_inputs_with_types(
+        {'index_name': str, 'start_date': str, 'end_date': str},
+        index_name=index_name, start_date=start_date, end_date=end_date)
+
+    start_fmt = _format_date(start_date)
+    end_fmt = _format_date(end_date)
+    sql = f"""
+        SELECT index_name, accord_code, company_name, sector,
+               mcap_category, date, weights
+        FROM {TABLE_NAME}
+        WHERE index_name = ? AND date BETWEEN ? AND ?
+        ORDER BY date ASC, weights DESC
     """
-    Excel formula:
-        =get_series("nifty_500", "2024-03-31", "2025-09-30")
-
-    Returns (index_name, accord_code, company_name, sector,
-    mcap_category, date, weights) for the given index between start and end dates.
-    """
-    try:
-        if not index_name or not start_date or not end_date:
-            return [["Error: index_name, start_date, and end_date are required"]]
-
-        start_fmt = _format_date(start_date)
-        end_fmt = _format_date(end_date)
-
-        sql = f"""
-            SELECT index_name, accord_code, company_name, sector,
-                   mcap_category, date, weights
-            FROM {TABLE_NAME}
-            WHERE index_name = ?
-              AND date BETWEEN ? AND ?
-            ORDER BY date ASC, weights DESC
-        """
-
-        df = _run_query_df(sql, (index_name, start_fmt, end_fmt))
-
-        if df.empty:
-            return [[f"No data found for index='{index_name}' between '{start_fmt}' and '{end_fmt}'"]]
-
-        return [df.columns.tolist()] + df.values.tolist()
-
-    except Exception as e:
-        return [[f"Error: {e}"]]
+    df = _run_query_df(sql, (index_name, start_fmt, end_fmt))
+    if df.empty:
+        return [[f"⚠️ No records found for '{index_name}' between {start_fmt} and {end_fmt}."]]
+    return [df.columns.tolist()] + df.values.tolist()
 
 
-# -------------------------------------------------------------------
-# 3️⃣ Get Data of a Particular Index on a Given Date
-# -------------------------------------------------------------------
-@xw.func
+@xw.func(category="Finance UDFs")
 @xw.ret(expand='table')
+@log_call
 def get_matrix(date_value: str, index_name: str):
+    """Fetch all constituents of a given index as on a specific date."""
+    _validate_inputs_with_types({'date_value': str, 'index_name': str},
+                                date_value=date_value, index_name=index_name)
+
+    formatted_date = _format_date(date_value)
+    sql = f"""
+        SELECT accord_code, company_name, sector,
+               mcap_category, date, weights
+        FROM {TABLE_NAME}
+        WHERE index_name = ? AND (date = ? OR date LIKE ?)
+        ORDER BY weights DESC
     """
-    Excel formula:
-        =get_matrix("2024-03-31", "nifty_500")
+    df = _run_query_df(sql, (index_name, formatted_date, formatted_date.split(" ")[0] + "%"))
+    if df.empty:
+        return [[f"⚠️ No records found for '{index_name}' on {formatted_date}."]]
+    return [df.columns.tolist()] + df.values.tolist()
 
-    Returns (accord_code, company_name, sector, mcap_category,
-    date, weights) for the given index on the specified date.
+
+@xw.func(category="Finance UDFs")
+@xw.ret(expand='table')
+@log_call
+def get_all_data(index_name: str):
+    """Fetch all available data for a specific index across all dates."""
+    _validate_inputs_with_types({'index_name': str}, index_name=index_name)
+
+    sql = f"""
+        SELECT accord_code, company_name, sector,
+               mcap_category, date, weights
+        FROM {TABLE_NAME}
+        WHERE index_name = ?
+        ORDER BY date ASC, weights DESC
     """
-    try:
-        if not date_value or not index_name:
-            return [["Error: date and index_name are required"]]
+    df = _run_query_df(sql, (index_name,))
+    if df.empty:
+        return [[f"⚠️ No data found for index='{index_name}'."]]
+    return [df.columns.tolist()] + df.values.tolist()
 
-        formatted_date = _format_date(date_value)
 
-        sql = f"""
-            SELECT accord_code, company_name, sector,
-                   mcap_category, date, weights
-            FROM {TABLE_NAME}
-            WHERE index_name = ?
-              AND (date = ? OR date LIKE ?)
-            ORDER BY weights DESC
-        """
-
-        df = _run_query_df(sql, (index_name, formatted_date, formatted_date.split(" ")[0] + "%"))
-
-        if df.empty:
-            return [[f"No data found for index='{index_name}' on '{formatted_date}'"]]
-
-        return [df.columns.tolist()] + df.values.tolist()
-
-    except Exception as e:
-        return [[f"Error: {e}"]]
-
+@xw.func(category="Finance UDFs")
+@log_call
+def clear_cache():
+    """Clear cached queries (useful after DB updates)."""
+    _cached_query.cache_clear()
+    return "✅ Cache cleared successfully."
 
 # -------------------------------------------------------------------
-# 4️⃣ Get All Data for a Particular Index
+# EXCEL TOOLTIP REGISTRATION
 # -------------------------------------------------------------------
 @xw.func
-@xw.ret(expand='table')
-def get_all_data(index_name: str):
-    """
-    Excel formula:
-        =get_all_data("nifty_500")
-
-    Returns all records for the given index across all available dates.
-    """
+def register_excel_udfs():
+    """Register UDFs with descriptions and argument help."""
     try:
-        if not index_name:
-            return [["Error: index_name is required"]]
+        try:
+            excel = xw.apps.active.api
+        except:
+            excel = win32com.client.Dispatch("Excel.Application")
 
-        sql = f"""
-            SELECT accord_code, company_name, sector,
-                   mcap_category, date, weights
-            FROM {TABLE_NAME}
-            WHERE index_name = ?
-            ORDER BY date ASC, weights DESC
-        """
+        functions = [
+            ("get_monthly_data", "Fetch index data for a given date.", ("index_name", "date_value")),
+            ("get_series", "Fetch index data between two dates.", ("index_name", "start_date", "end_date")),
+            ("get_matrix", "Fetch data matrix for a given date.", ("date_value", "index_name")),
+            ("get_all_data", "Fetch all records for a given index.", ("index_name",)),
+            ("clear_cache", "Clear cached results from memory.", ()),
+        ]
 
-        df = _run_query_df(sql, (index_name,))
+        for name, desc, args in functions:
+            try:
+                excel.MacroOptions(
+                    Macro=name,
+                    Description=desc,
+                    ArgumentDescriptions=list(args),
+                    Category="Finance UDFs"
+                )
+            except Exception:
+                continue
 
-        if df.empty:
-            return [[f"No data found for index='{index_name}'"]]
-
-        return [df.columns.tolist()] + df.values.tolist()
-
+        return "✅ UDFs registered successfully! (Save & reopen workbook for tooltips)"
     except Exception as e:
-        return [[f"Error: {e}"]]
+        return f"⚠️ Registration failed: {e}"
