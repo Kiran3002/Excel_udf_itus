@@ -80,7 +80,7 @@ After enabling the xlwings add-in, configure these settings:
 ### 3. Set UDF Module
 - Go to **xlwings tab → UDF Modules**
 - Enter the Python file name (without `.py`) that contains your xlwings functions:
-[text](ebitda_margins_data_udf)
+ebitda_margins_data_udf
 
 >  These settings ensure Excel connects to the correct Python environment, project folder, and script for executing xlwings functions.
 
