@@ -25,7 +25,7 @@ $ pip install -r requirements.txt
 ### Edit config.ini file
 #### Locate `config.ini` from project folder
 Open the file and edit the database path:
-> DB_PATH = add equity_index_constituents - nifty500.db database path from project folder
+> DB_PATH = add equity_index_constituents - nifty500.db database path from project folder, make sure to give \\ in the path 
 ---
 
 ## install xlwings addin
@@ -119,7 +119,7 @@ you can use the following custom formulas directly inside Excel — just like bu
 Each function pulls data from database and displays it as a formatted table.
 
 ---
-## 🧩 Available Functions
+## Available Functions
 
 #### 1. `get_monthly_data(index_name, date_value)`
 Fetch constituents for a given index as on a specific date.
