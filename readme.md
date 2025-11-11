@@ -43,8 +43,8 @@ If the `xlwings` tab is not visible in Excel, add it manually:
 1. Open **Excel**.
 2. Go to `File → Options → Add-ins`.
 3. In the **Manage** dropdown (bottom), select **Excel Add-ins** and click **Go**.
-4. Click **Browse** and navigate to your xlwings add-in file:
-5. Select the file and click **OK**.
+4. Click **Browse** and navigate to your xlwings add-in file.
+5. Select the **xlwings.xlam** file and click **OK**.
 6. Ensure the **xlwings** checkbox is checked.
 
 > This will add the xlwings tab to your Excel ribbon, allowing you to run Python code directly from Excel.
@@ -58,11 +58,8 @@ To ensure Excel’s VBA environment recognizes the `xlwings` library:
 3. Go to **Tools → References...**
 4. Find **xlwings** in the list and check the box.
 5. If it’s missing:
-   - Click **Browse** and navigate to:
-     ```
-     C:\Users\<YourUserName>\AppData\Roaming\Microsoft\AddIns\xlwings.xlam
-     ```
-   - Select it and click **OK**.
+   - Click **Browse** and navigate to your xlwings add-in file.
+   - Select the **xlwings.xlam** file and click **OK**.
 6. Click **OK** to save and close.
 
 > This step is required for VBA macros and Python scripts to work together using xlwings.
@@ -78,7 +75,7 @@ After enabling the xlwings add-in, configure these settings:
 
 ### 2. Set Python Path
 - Go to **xlwings tab → Python Path**
-- Add your project folder path:
+- Add your project folder path.
 
 ### 3. Set UDF Module
 - Go to **xlwings tab → UDF Modules**
@@ -87,7 +84,7 @@ After enabling the xlwings add-in, configure these settings:
 
 >  These settings ensure Excel connects to the correct Python environment, project folder, and script for executing xlwings functions.
 
-### click on import functions 
+## click on import functions 
 
 Once you’ve installed and configured `xlwings`, and clicked **Import Functions** from the xlwings tab in Excel,  
 you can use the following custom formulas directly inside Excel — just like built-in Excel functions.
@@ -95,7 +92,7 @@ you can use the following custom formulas directly inside Excel — just like bu
 Each function pulls data from your database and displays it as a formatted table.
 
 ---
-### 🧩 Available Functions
+## 🧩 Available Functions
 
 #### 1. `get_monthly_data(index_name, date_value)`
 Fetch constituents for a given index as on a specific date.
