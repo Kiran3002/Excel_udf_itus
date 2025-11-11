@@ -10,7 +10,7 @@ Follow these steps to set up and run the project locally.
 
 ---
 
-## 1. Clone the Repository
+### Clone the Repository
 
 Clone the project from GitHub :
 
@@ -18,26 +18,28 @@ Clone the project from GitHub :
 git clone https://github.com/Kiran3002/Excel_udf_itus.git
 ```
 
-## install requirements.txt
+### install requirements.txt
 ```
 $ pip install -r requirements.txt
 ```
-## Edit config.ini file
-### Locate `config.ini` from project folder
+### Edit config.ini file
+#### Locate `config.ini` from project folder
 Open the file and edit the database path:
 > DB_PATH = add equity_index_constituents - nifty500.db database path from project folder
 ---
 
 ## install xlwings addin
 xlwings lets you call Python functions directly from Excel, or manipulate Excel workbooks via Python code
+**open cmd or bash**
+installation of xlwings:
 ```
 $ pip install xlwings
 ```
-Addin installation for Excel
+xlwings addin installation for Excel
 ```
 $  xlwings addin install
 ```
-Confirmation and shows installed path for xlwings
+Confirm xlwings Installation and Path
 ```
 $ pip show xlwings
 ```
@@ -53,6 +55,7 @@ To allow `xlwings` to control Excel macros, you must enable access to the VBA pr
 3. Check the box:  
    **"Trust access to the VBA project object model"**
 4. Click **OK** to apply.
+![Trust center](images/trust_center.jpg)
 
 > This step is required for Python functions to interact with Excel macros using `xlwings`.
 ---
@@ -67,6 +70,7 @@ If the `xlwings` tab is not visible in Excel, add it manually:
 4. Click **Browse** and navigate to your xlwings add-in file.
 5. Select the **xlwings.xlam** file and click **OK**.
 6. Ensure the **xlwings** checkbox is checked.
+![Add in](images/add_in.jpg)
 
 > This will add the xlwings tab to your Excel ribbon, allowing you to run Python code directly from Excel.
 ---
@@ -83,6 +87,7 @@ To ensure Excel’s VBA environment recognizes the `xlwings` library:
    - Click **Browse** and navigate to your xlwings add-in file.
    - Select the **xlwings.xlam** file and click **OK**.
 6. Click **OK** to save and close.
+![VBA editor](images/vba_xlwings.jpg)
 
 > This step is required for VBA macros and Python scripts to work together using xlwings.
 ---
@@ -90,7 +95,8 @@ To ensure Excel’s VBA environment recognizes the `xlwings` library:
 ## Configure xlwings Settings in Excel
 
 After enabling the xlwings add-in, configure these settings:
-
+go to xlwings tab:
+![xlwings ribbon](images/ribbon.jpg)
 ### 1. Set Python Interpreter
 - Go to **xlwings tab → Interpreter**
 - Verify the path to your Python executable:
