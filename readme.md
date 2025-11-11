@@ -55,7 +55,6 @@ To allow `xlwings` to control Excel macros, you must enable access to the VBA pr
 3. Check the box:  
    **"Trust access to the VBA project object model"**
 4. Click **OK** to apply.
-![Trust center](images/trust_center.jpg)
 
 > This step is required for Python functions to interact with Excel macros using `xlwings`.
 ---
@@ -70,7 +69,6 @@ If the `xlwings` tab is not visible in Excel, add it manually:
 4. Click **Browse** and navigate to your xlwings add-in file.
 5. Select the **xlwings.xlam** file and click **OK**.
 6. Ensure the **xlwings** checkbox is checked.
-![Add in](images/add_in.jpg)
 
 > This will add the xlwings tab to your Excel ribbon, allowing you to run Python code directly from Excel.
 ---
@@ -87,7 +85,6 @@ To ensure Excel’s VBA environment recognizes the `xlwings` library:
    - Click **Browse** and navigate to your xlwings add-in file.
    - Select the **xlwings.xlam** file and click **OK**.
 6. Click **OK** to save and close.
-![VBA editor](images/vba_xlwings.jpg)
 
 > This step is required for VBA macros and Python scripts to work together using xlwings.
 ---
