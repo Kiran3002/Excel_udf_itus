@@ -4,15 +4,15 @@
 
 This project implements a robust and performant system that exposes powerful financial data retrieval capabilities directly within Microsoft Excel via User-Defined Functions (UDFs). The system is designed to allow financial analysts to query structured financial index constituent data (including weights, sector, and market capitalization category) using simple, formula-based syntax directly in an Excel cell, simulating a seamless integration experience.
 
-# 🚀 Project Setup Guide
+#  Project Setup Guide
 
 Follow these steps to set up and run the project locally.
 
 ---
 
-## 🧩 1. Clone the Repository
+## 1. Clone the Repository
 
-First, clone the project from GitHub :
+Clone the project from GitHub :
 
 ```bash
 git clone https://github.com/Kiran3002/Excel_udf_itus.git
@@ -22,13 +22,10 @@ git clone https://github.com/Kiran3002/Excel_udf_itus.git
 ```
 $ pip install -r requirements.txt
 ```
-## Edit `config.ini`
-### Locate `config.ini`
-Open the file and edit the database path
-```ini
-[DATABASE]
-DB_PATH = #add database path from project folder
-```
+## Edit config.ini file
+### Locate `config.ini` from project folder
+Open the file and edit the database path:
+> DB_PATH = add equity_index_constituents - nifty500.db database path from project folder
 ---
 
 ## install xlwings addin
@@ -44,6 +41,7 @@ Confirmation and shows installed path for xlwings
 ```
 $ pip show xlwings
 ```
+---
 ## Enable Trust Access to VBA Project Object Model
 
 To allow `xlwings` to control Excel macros, you must enable access to the VBA project.
@@ -57,6 +55,7 @@ To allow `xlwings` to control Excel macros, you must enable access to the VBA pr
 4. Click **OK** to apply.
 
 > This step is required for Python functions to interact with Excel macros using `xlwings`.
+---
 
 ## Add the xlwings Excel Add-in Manually
 
@@ -70,6 +69,7 @@ If the `xlwings` tab is not visible in Excel, add it manually:
 6. Ensure the **xlwings** checkbox is checked.
 
 > This will add the xlwings tab to your Excel ribbon, allowing you to run Python code directly from Excel.
+---
 
 ## Enable xlwings Reference in VBA Editor
 
@@ -85,6 +85,7 @@ To ensure Excel’s VBA environment recognizes the `xlwings` library:
 6. Click **OK** to save and close.
 
 > This step is required for VBA macros and Python scripts to work together using xlwings.
+---
 
 ## Configure xlwings Settings in Excel
 
@@ -105,6 +106,7 @@ After enabling the xlwings add-in, configure these settings:
 ebitda_margins_data_udf
 
 >  These settings ensure Excel connects to the correct Python environment, project folder, and script for executing xlwings functions.
+---
 
 ## click on import functions 
 
@@ -153,6 +155,7 @@ Fetch all available data for a specific index across all dates.
 ```
 output columns:
 accord_code | company_name | sector | mcap_category | date | weights
+---
 
 
 
