@@ -159,8 +159,7 @@ Fetch all available data for a specific index across all dates.
 output columns:
 accord_code | company_name | sector | mcap_category | date | weights
 
-For any queries: raise an issue or feel free to reach out kirankumar300213@gmail.com
----
+
 
 
 
