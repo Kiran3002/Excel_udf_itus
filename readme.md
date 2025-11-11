@@ -4,10 +4,32 @@
 
 This project implements a robust and performant system that exposes powerful financial data retrieval capabilities directly within Microsoft Excel via User-Defined Functions (UDFs). The system is designed to allow financial analysts to query structured financial index constituent data (including weights, sector, and market capitalization category) using simple, formula-based syntax directly in an Excel cell, simulating a seamless integration experience.
 
+# 🚀 Project Setup Guide
+
+Follow these steps to set up and run the project locally.
+
+---
+
+## 🧩 1. Clone the Repository
+
+First, clone the project from GitHub :
+
+```bash
+git clone https://github.com/Kiran3002/Excel_udf_itus.git
+```
+
 ## install requirements.txt
 ```
 $ pip install -r requirements.txt
 ```
+## Edit `config.ini`
+### Locate `config.ini`
+Open the file and edit the database path
+```ini
+[DATABASE]
+DB_PATH = #add database path from project folder
+```
+---
 
 ## install xlwings addin
 xlwings lets you call Python functions directly from Excel, or manipulate Excel workbooks via Python code
