@@ -97,7 +97,7 @@ go to xlwings tab:
 ### 1. Set Python Interpreter
 - Go to **xlwings tab → Interpreter**
 - Verify the path to your Python executable:
-- If missing, click **Browse** and select your Python executable.
+- If missing add the python path.
 
 ### 2. Set Python Path
 - Go to **xlwings tab → Python Path**
@@ -116,7 +116,7 @@ ebitda_margins_data_udf
 Once you’ve installed and configured `xlwings`, and clicked **Import Functions** from the xlwings tab in Excel,  
 you can use the following custom formulas directly inside Excel — just like built-in Excel functions.
 
-Each function pulls data from your database and displays it as a formatted table.
+Each function pulls data from database and displays it as a formatted table.
 
 ---
 ## 🧩 Available Functions
@@ -158,6 +158,8 @@ Fetch all available data for a specific index across all dates.
 ```
 output columns:
 accord_code | company_name | sector | mcap_category | date | weights
+
+For any queries: raise an issue or feel free to reach out @kirankumar300213@gmail.com
 ---
 
 
