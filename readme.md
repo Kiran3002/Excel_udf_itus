@@ -25,7 +25,7 @@ $ pip install -r requirements.txt
 ### Edit config.ini file
 #### Locate `config.ini` from project folder
 Open the file and edit the database path:
-> DB_PATH = add equity_index_constituents - nifty500.db database path from project folder, make sure to give \\ in the path 
+> DB_PATH = add equity_index_constituents - nifty500.db database path from project folder, make sure to give \\\ in the path 
 ---
 
 ## install xlwings addin
