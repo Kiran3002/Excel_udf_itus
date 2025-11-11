@@ -98,7 +98,7 @@ Each function pulls data from your database and displays it as a formatted table
 Fetch constituents for a given index as on a specific date.
 **Example Usage:**
 ```excel
-=get_monthly_data("nifty_500", "2024-03-31")
+=get_monthly_data("nifty_500", "2023-04-30")
 ```
 output columns:
 company_name | sector | mcap_category | weights
@@ -117,7 +117,7 @@ Fetch all constituents of a given index as on a specific date.
 
 **Example Usage:**
 ```excel
-=get_matrix("2024-03-31", "nifty_500")
+=get_matrix("2023-04-30", "nifty_500")
 ```
 output columns:
 accord_code | company_name | sector | mcap_category | date | weights
