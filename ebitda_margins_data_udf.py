@@ -24,9 +24,8 @@ import win32com.client
 import logging
 from logging.handlers import RotatingFileHandler
 import time
-import inspect
 import functools
-import time
+
 # -------------------------------------------------------------------
 # CONFIGURATION
 # -------------------------------------------------------------------
@@ -56,11 +55,13 @@ try:
     logger = logging.getLogger("QueryLogger")
     logger.setLevel(logging.INFO)
     handler = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding='utf-8')
-    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(message)s",
+        "%Y-%m-%d %H:%M:%S"
+    )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 except Exception:
-    # If logging setup fails, don’t break Excel UDFs
     logger = None
 
 # -------------------------------------------------------------------
@@ -78,28 +79,28 @@ def _get_connection():
         conn = sqlite3.connect(DB_PATH)
         if not _index_checked:
             try:
-                conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_equity_index_constituents_lookup
-                ON equity_index_constituents (index_name, accord_code, date);
+                conn.execute(f"""
+                CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_lookup
+                ON {TABLE_NAME} (index_name, accord_code, date);
                 """)
                 conn.commit()
                 _index_checked = True
                 if logger:
-                    logger.info("✅ Verified: index idx_index_components_lookup exists.")
+                    logger.info(f"Verified index idx_{TABLE_NAME}_lookup exists.")
             except Exception as e:
                 if logger:
-                    logger.warning(f"⚠️ Index check skipped due to: {e}")
+                    logger.warning(f"Index creation skipped: {e}")
         return conn
     else:
         import psycopg2
         return psycopg2.connect(**RDS_CONFIG)
-    
+
 # -------------------------------------------------------------------
-# CACHING
+# CACHING AND QUERY EXECUTION
 # -------------------------------------------------------------------
 @lru_cache(maxsize=64)
 def _cached_query(sql: str, params_key: Tuple[str]):
-    """Run and cache SQL queries (LRU cache for speed)."""
+    """Run and cache SQL queries efficiently."""
     conn = _get_connection()
     try:
         df = pd.read_sql_query(sql, conn, params=params_key)
@@ -108,19 +109,16 @@ def _cached_query(sql: str, params_key: Tuple[str]):
         conn.close()
 
 def _run_query_df(sql: str, params: Tuple = ()):
-    """Execute SQL with caching and performance logging."""
+    """Execute SQL query with caching and log execution time."""
     params_key = tuple(str(p) for p in params)
     start = time.perf_counter()
 
     df = _cached_query(sql, params_key)
 
-    duration = round((time.perf_counter() - start) * 1000, 3)  # in ms
+    duration_ms = round((time.perf_counter() - start) * 1000, 3)
     if logger:
-        logger.info(f"⏱️ Query time: {duration} ms | SQL Params={params_key}")
-        if duration > 50:  # > 0.05 seconds threshold
-            logger.warning(f"⚠️ Slow query detected ({duration} ms): {params_key}")
+        logger.info(f"SQL executed | Duration={duration_ms} ms | Params={params_key}")
     return df
-
 
 # -------------------------------------------------------------------
 # INPUT VALIDATION
@@ -139,10 +137,7 @@ def _format_date(date_value: str) -> str:
 
 
 def _validate_inputs_with_types(expected_types: dict, **kwargs):
-    """
-    Validate that required inputs are provided and match expected types.
-    expected_types = {'param': str, 'param2': str}
-    """
+    """Validate required inputs and types."""
     for name, value in kwargs.items():
         if value is None or str(value).strip() == "":
             raise ValueError(f"Missing required input: {name}")
@@ -154,17 +149,17 @@ def _validate_inputs_with_types(expected_types: dict, **kwargs):
             )
 
 # -------------------------------------------------------------------
-# LOG DECORATOR
+# FUNCTION CALL LOGGING DECORATOR
 # -------------------------------------------------------------------
-
-
 def log_call(func):
-    """Decorator for logging execution time and success/failure — Excel-safe."""
+    """Logs every function call with execution time and result status."""
     @functools.wraps(func)
-    def inner_wrapper(*args):  
-        start = time.perf_counter()
+    def wrapper(*args):
+        start_time = time.perf_counter()
         status = "SUCCESS"
         error_msg = None
+        result = None
+
         try:
             result = func(*args)
             return result
@@ -173,19 +168,18 @@ def log_call(func):
             error_msg = str(e)
             raise
         finally:
-            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            end_time = time.perf_counter()
+            duration_ms = round((end_time - start_time) * 1000, 3)
             if logger:
-                params = ", ".join([repr(a) for a in args])
-                msg = (
-                    f"{'SUCCESS' if status == 'SUCCESS' else 'FAILURE'} "
-                    f"Function: {func.__name__} | Params: ({params}) | "
-                    f"Duration: {duration_ms} ms | Status: {status}"
+                params_str = ", ".join([repr(a) for a in args])
+                log_message = (
+                    f"Function={func.__name__} | Params=({params_str}) | "
+                    f"Time={duration_ms} ms | Status={status}"
                 )
                 if error_msg:
-                    msg += f" | Error: {error_msg}"
-                logger.info(msg)
-    return inner_wrapper
-
+                    log_message += f" | Error='{error_msg}'"
+                logger.info(log_message)
+    return wrapper
 
 # -------------------------------------------------------------------
 # UDFS
@@ -197,7 +191,6 @@ def get_monthly_data(index_name: str, date_value: str):
     """Fetch constituents for a given index as on a specific date."""
     _validate_inputs_with_types({'index_name': str, 'date_value': str},
                                 index_name=index_name, date_value=date_value)
-
     formatted_date = _format_date(date_value)
     sql = f"""
         SELECT company_name, sector, mcap_category, weights
@@ -207,9 +200,8 @@ def get_monthly_data(index_name: str, date_value: str):
     """
     df = _run_query_df(sql, (index_name, formatted_date, formatted_date.split(" ")[0] + "%"))
     if df.empty:
-        return [[f"⚠️ No data found for index='{index_name}' on '{formatted_date}'"]]
+        return [[f"No data found for index='{index_name}' on '{formatted_date}'"]]
     return [df.columns.tolist()] + df.values.tolist()
-
 
 @xw.func(category="Finance UDFs")
 @xw.ret(expand='table')
@@ -219,7 +211,6 @@ def get_series(index_name: str, start_date: str, end_date: str):
     _validate_inputs_with_types(
         {'index_name': str, 'start_date': str, 'end_date': str},
         index_name=index_name, start_date=start_date, end_date=end_date)
-
     start_fmt = _format_date(start_date)
     end_fmt = _format_date(end_date)
     sql = f"""
@@ -231,9 +222,8 @@ def get_series(index_name: str, start_date: str, end_date: str):
     """
     df = _run_query_df(sql, (index_name, start_fmt, end_fmt))
     if df.empty:
-        return [[f"⚠️ No records found for '{index_name}' between {start_fmt} and {end_fmt}."]]
+        return [[f"No records found for '{index_name}' between {start_fmt} and {end_fmt}."]]
     return [df.columns.tolist()] + df.values.tolist()
-
 
 @xw.func(category="Finance UDFs")
 @xw.ret(expand='table')
@@ -242,7 +232,6 @@ def get_matrix(date_value: str, index_name: str):
     """Fetch all constituents of a given index as on a specific date."""
     _validate_inputs_with_types({'date_value': str, 'index_name': str},
                                 date_value=date_value, index_name=index_name)
-
     formatted_date = _format_date(date_value)
     sql = f"""
         SELECT accord_code, company_name, sector,
@@ -253,9 +242,8 @@ def get_matrix(date_value: str, index_name: str):
     """
     df = _run_query_df(sql, (index_name, formatted_date, formatted_date.split(" ")[0] + "%"))
     if df.empty:
-        return [[f"⚠️ No records found for '{index_name}' on {formatted_date}."]]
+        return [[f"No records found for '{index_name}' on {formatted_date}."]]
     return [df.columns.tolist()] + df.values.tolist()
-
 
 @xw.func(category="Finance UDFs")
 @xw.ret(expand='table')
@@ -263,7 +251,6 @@ def get_matrix(date_value: str, index_name: str):
 def get_all_data(index_name: str):
     """Fetch all available data for a specific index across all dates."""
     _validate_inputs_with_types({'index_name': str}, index_name=index_name)
-
     sql = f"""
         SELECT accord_code, company_name, sector,
                mcap_category, date, weights
@@ -273,16 +260,15 @@ def get_all_data(index_name: str):
     """
     df = _run_query_df(sql, (index_name,))
     if df.empty:
-        return [[f"⚠️ No data found for index='{index_name}'."]]
+        return [[f"No data found for index='{index_name}'."]]
     return [df.columns.tolist()] + df.values.tolist()
-
 
 @xw.func(category="Finance UDFs")
 @log_call
 def clear_cache():
     """Clear cached queries (useful after DB updates)."""
     _cached_query.cache_clear()
-    return "✅ Cache cleared successfully."
+    return "Cache cleared successfully."
 
 # -------------------------------------------------------------------
 # EXCEL TOOLTIP REGISTRATION
@@ -315,6 +301,6 @@ def register_excel_udfs():
             except Exception:
                 continue
 
-        return "✅ UDFs registered successfully! (Save & reopen workbook for tooltips)"
+        return "UDFs registered successfully! (Save & reopen workbook for tooltips)"
     except Exception as e:
-        return f"⚠️ Registration failed: {e}"
+        return f"Registration failed: {e}"
