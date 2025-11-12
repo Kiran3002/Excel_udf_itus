@@ -75,7 +75,7 @@ If the `xlwings` tab is not visible in Excel, add it manually:
 1. Open existing **example.xlsm** from project folder or open **Excel** with macro enabled file(.xlsm).
 2. Go to `File → Options → Add-ins`.
 3. In the **Manage** dropdown (bottom), select **Excel Add-ins** and click **Go**.
-4. Click **Browse** and navigate to your xlwings add-in file(run pip show xlwings for the path).
+4. Click **Browse** and navigate to your xlwings add-in folder(run pip show xlwings for the path).
 5. Select the **xlwings.xlam** file and click **OK**.
 6. Ensure the **xlwings** checkbox is checked.
 
@@ -91,7 +91,8 @@ To ensure Excel’s VBA environment recognizes the `xlwings` library:
 3. Go to **Tools → References...**
 4. Find **xlwings** in the list and check the box.
 5. If it’s missing:
-   - Click **Browse** and navigate to your xlwings add-in file(run pip show xlwings for the path).
+   - Click **Browse** and navigate to your xlwings add-in folder (run pip show xlwings for the path).
+   - Choose file type as **.xlam** at dropdown filetype.
    - Select the **xlwings.xlam** file and click **OK**.
 6. Click **OK** to save and close.
 
