@@ -5,14 +5,14 @@
 This project implements a robust and performant system that exposes powerful financial data retrieval capabilities directly within Microsoft Excel via User-Defined Functions (UDFs). The system is designed to allow financial analysts to query structured financial index constituent data (including weights, sector, and market capitalization category) using simple, formula-based syntax directly in an Excel cell, simulating a seamless integration experience.
 
 ## Data description
-**Column**	            **Description**
-*accord_code*	         Unique company identifier
-*company_name*	         Company name
-*sector*	               Sector name
-*mcap_category*	      Market capitalization category (Large/Mid/Small)
-*date*	               Date (YYYY-MM-DD)
-*weights*	            monthly proportional weight or percentage allocation of each  constituent stock within the index
-*index_name*	         Name of the index (eg: nifty_500, nifty_50)
+
+#### accord_code: Unique company identifier
+#### company_name: Company name
+#### sector: Sector name
+#### mcap_category: Market capitalization category (Large/Mid/Small)
+#### date: Date (YYYY-MM-DD)
+#### weights: Monthly proportional weight or percentage allocation of each  constituent stock within the index
+#### index_name: Name of the index (eg: nifty_500, nifty_50)
 
 
 #  UDF Setup Guide
