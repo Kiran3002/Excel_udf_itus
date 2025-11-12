@@ -4,7 +4,18 @@
 
 This project implements a robust and performant system that exposes powerful financial data retrieval capabilities directly within Microsoft Excel via User-Defined Functions (UDFs). The system is designed to allow financial analysts to query structured financial index constituent data (including weights, sector, and market capitalization category) using simple, formula-based syntax directly in an Excel cell, simulating a seamless integration experience.
 
-#  Project Setup Guide
+## Data description
+**Column**	            **Description**
+*accord_code*	         Unique company identifier
+*company_name*	         Company name
+*sector*	               Sector name
+*mcap_category*	      Market capitalization category (Large/Mid/Small)
+*date*	               Date (YYYY-MM-DD)
+*weights*	            monthly proportional weight or percentage allocation of each  constituent stock within the index
+*index_name*	         Name of the index (eg: nifty_500, nifty_50)
+
+
+#  UDF Setup Guide
 
 Follow these steps to set up and run the project locally.
 
@@ -12,17 +23,13 @@ Follow these steps to set up and run the project locally.
 
 ### Clone the Repository
 
-Clone the project from GitHub :
-
+Clone the project to a desired folder from GitHub :
+**open cmd from folder path**
 ```bash
 git clone https://github.com/Kiran3002/Excel_udf_itus.git
 ```
-
-### install requirements.txt
-```
-pip install -r requirements.txt
-```
 ### Edit config.ini file
+
 #### Locate `config.ini` from project folder
 Open the file and edit the database path:
 > DB_PATH = add equity_index_constituents - nifty500.db database path from project folder, make sure to give \\\ in the path 
@@ -30,6 +37,7 @@ Open the file and edit the database path:
 
 ## install xlwings addin
 xlwings lets you call Python functions directly from Excel, or manipulate Excel workbooks via Python code
+
 **open cmd or bash**
 installation of xlwings:
 ```
@@ -63,10 +71,10 @@ To allow `xlwings` to control Excel macros, you must enable access to the VBA pr
 
 If the `xlwings` tab is not visible in Excel, add it manually:
 
-1. Open **Excel**.
+1. Open existing **example.xlsm** from project folder or open **Excel** with macro enabled file(.xlsm).
 2. Go to `File → Options → Add-ins`.
 3. In the **Manage** dropdown (bottom), select **Excel Add-ins** and click **Go**.
-4. Click **Browse** and navigate to your xlwings add-in file.
+4. Click **Browse** and navigate to your xlwings add-in file(run pip show xlwings for the path).
 5. Select the **xlwings.xlam** file and click **OK**.
 6. Ensure the **xlwings** checkbox is checked.
 
@@ -77,12 +85,12 @@ If the `xlwings` tab is not visible in Excel, add it manually:
 
 To ensure Excel’s VBA environment recognizes the `xlwings` library:
 
-1. Open **Excel**.
+1. Open existing **example.xlsm** from project folder or open **Excel** with macro enabled file(.xlsm).
 2. Press **`Alt + F11`** to open the **VBA Editor**.
 3. Go to **Tools → References...**
 4. Find **xlwings** in the list and check the box.
 5. If it’s missing:
-   - Click **Browse** and navigate to your xlwings add-in file.
+   - Click **Browse** and navigate to your xlwings add-in file(run pip show xlwings for the path).
    - Select the **xlwings.xlam** file and click **OK**.
 6. Click **OK** to save and close.
 
@@ -101,7 +109,7 @@ go to xlwings tab:
 
 ### 2. Set Python Path
 - Go to **xlwings tab → Python Path**
-- Add your project folder path.
+- Add your project folder path (no quotes required).
 
 ### 3. Set UDF Module
 - Go to **xlwings tab → UDF Modules**
