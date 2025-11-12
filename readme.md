@@ -20,7 +20,7 @@ git clone https://github.com/Kiran3002/Excel_udf_itus.git
 
 ### install requirements.txt
 ```
-$ pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 ### Edit config.ini file
 #### Locate `config.ini` from project folder
@@ -33,15 +33,15 @@ xlwings lets you call Python functions directly from Excel, or manipulate Excel 
 **open cmd or bash**
 installation of xlwings:
 ```
-$ pip install xlwings
+pip install xlwings
 ```
 xlwings addin installation for Excel
 ```
-$  xlwings addin install
+xlwings addin install
 ```
 Confirm xlwings Installation and Path
 ```
-$ pip show xlwings
+pip show xlwings
 ```
 ---
 ## Enable Trust Access to VBA Project Object Model

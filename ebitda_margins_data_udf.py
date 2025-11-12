@@ -20,7 +20,6 @@ import os
 from datetime import datetime
 from typing import Tuple
 from functools import lru_cache
-import win32com.client
 import logging
 from logging.handlers import RotatingFileHandler
 import time
@@ -270,37 +269,4 @@ def clear_cache():
     _cached_query.cache_clear()
     return "Cache cleared successfully."
 
-# -------------------------------------------------------------------
-# EXCEL TOOLTIP REGISTRATION
-# -------------------------------------------------------------------
-@xw.func
-def register_excel_udfs():
-    """Register UDFs with descriptions and argument help."""
-    try:
-        try:
-            excel = xw.apps.active.api
-        except:
-            excel = win32com.client.Dispatch("Excel.Application")
 
-        functions = [
-            ("get_monthly_data", "Fetch index data for a given date.", ("index_name", "date_value")),
-            ("get_series", "Fetch index data between two dates.", ("index_name", "start_date", "end_date")),
-            ("get_matrix", "Fetch data matrix for a given date.", ("date_value", "index_name")),
-            ("get_all_data", "Fetch all records for a given index.", ("index_name",)),
-            ("clear_cache", "Clear cached results from memory.", ()),
-        ]
-
-        for name, desc, args in functions:
-            try:
-                excel.MacroOptions(
-                    Macro=name,
-                    Description=desc,
-                    ArgumentDescriptions=list(args),
-                    Category="Finance UDFs"
-                )
-            except Exception:
-                continue
-
-        return "UDFs registered successfully! (Save & reopen workbook for tooltips)"
-    except Exception as e:
-        return f"Registration failed: {e}"
