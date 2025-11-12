@@ -32,7 +32,8 @@ git clone https://github.com/Kiran3002/Excel_udf_itus.git
 
 #### Locate `config.ini` from project folder
 Open the file and edit the database path:
-> DB_PATH = add equity_index_constituents - nifty500.db database path from project folder, make sure to give \\\ in the path 
+> DB_PATH = add equity_index_constituents - nifty500.db database path from project folder, make sure to give \\\ in the path(No quotes).
+
 ---
 
 ## install xlwings addin
